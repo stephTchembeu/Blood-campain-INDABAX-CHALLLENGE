@@ -327,63 +327,89 @@ def show_tab_content(tab_index):
     
     
     elif tab_index == 1:  # Eligibility
-        st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 20px;'>Filter Health Condition</h2>", unsafe_allow_html=True)
-    #     #
-    #     with st.sidebar:
-    #         st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 20px;'>Filter Health Condition</h2>", unsafe_allow_html=True)
-    #         X = st.session_state.df.columns
-    #         health_conditions_columns = [x for x in X if 'raison'.lower() in x.lower()]
-    #         df = st.session_state.df
+        with st.sidebar:
+            st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 20px;'>Filter Health Condition</h2>", unsafe_allow_html=True)
+            X = st.session_state.df.columns
+            health_conditions_columns = [x for x in X if 'raison'.lower() in x.lower()]
+            df = st.session_state.df
 
-    #         # select the eligibility column
-    #         eligibility_column = st.sidebar.multiselect("Choose the health condition:",df.columns)
-    #         # Select Eligibility Type
-    #         eligibility_types = st.session_state.df["ELIGIBILITE AU DON"].unique()
-    #         selected_eligibility = st.multiselect("Filter Eligibility Status:", eligibility_types, default=eligibility_types[0])
-    #         # Select Health Condition Columns to see their impact on the eligibility
-    #         selected_conditions = st.multiselect("🩺 Select health conditions:", health_conditions_columns)
-    #         #### straight line for the end of this filter block
-    #         st.sidebar.markdown("<hr style='border:1px solid #ccc'>", unsafe_allow_html=True)
-    #     ###
-    #     # Apply Filters
-    #     df_filtered = df[df[eligibility_column[0]].isin(selected_eligibility)]
-
-    #     # Display Key Statistics
-    #     def printer(list_):
-    #         if len(list_) == 1:
-    #             return f"{list_[0]}"
-    #         elif len(list_) == 2:
-    #             return f"{list_[0]} and {list_[1]}"
-    #         else:
-    #             return f"{list_[0]}, {list_[1]} and {list_[2]}"
-
-    #     st.subheader("Key statistics")
-    #     col1, col2 = st.columns(2)
-    #     col1.metric("Total donors ", len(df))
-    #     col2.metric(f"number of donors {printer(selected_eligibility)}", len(df_filtered))
-
-    #     # Eligibility Analysis
-    #     if selected_conditions:
-    #         st.subheader("Eligibility analysis")
+            # Select the eligibility column
+            eligibility_column = st.sidebar.multiselect("Choose the health condition:", df.columns)
             
-    #         # Display Dynamic Charts
-    #         for condition in selected_conditions:
-    #             st.write(f"{condition} impact on eligibility")
-                
-    #             # Grouping Data
-    #             condition_eligibility_counts = df_filtered.groupby([condition, eligibility_column[0]]).size().reset_index(name="count")
-    #             # Display Chartf
-    #             fig = px.bar(
-    #                 condition_eligibility_counts, 
-    #                 x=condition,  # X-axis: health condition values
-    #                 y="count",  # Y-axis: count of donors
-    #                 color=eligibility_column[0],  # Color: Eligibility Status
-    #                 title=f"Eligibility Impact of {condition}",
-    #                 barmode="stack",
-    #                 color_discrete_sequence=px.colors.qualitative.Set2
-    #             )
+            if eligibility_column:  # Ensure a column is selected
+                eligibility_types = df[eligibility_column[0]].unique()
+                selected_eligibility = st.multiselect("Filter eligibility status:", eligibility_types, default=eligibility_types[0])
+            else:
+                selected_eligibility = []
 
-    #             st.plotly_chart(fig, use_container_width=True)
+            # Select Health Condition Columns to see their impact on eligibility
+            selected_conditions = st.multiselect("🩺 Select health conditions:", health_conditions_columns)
+            
+            # Straight line for the end of this filter block
+            st.sidebar.markdown("<hr style='border:1px solid #ccc'>", unsafe_allow_html=True)
+        
+        # Apply Filters
+        if eligibility_column and selected_eligibility:
+            df_filtered = df[df[eligibility_column[0]].isin(selected_eligibility)]
+        else:
+            df_filtered = df.copy()
+        
+        # Display Key Statistics
+        def printer(list_):
+            if len(list_) == 1:
+                return f"{list_[0]}"
+            elif len(list_) == 2:
+                return f"{list_[0]} and {list_[1]}"
+            else:
+                return f"{list_[0]}, {list_[1]} and {list_[2]}"
+
+        st.subheader("Key statistics")
+        col1, col2 = st.columns(2)
+        col1.metric("Total donors ", len(df))
+        col2.metric(f"Number of donors {printer(selected_eligibility)}", len(df_filtered))
+
+        # Eligibility Analysis
+        if selected_conditions:
+            st.subheader("Eligibility analysis")
+            
+            # Arrange plots in rows with max 3 per row
+            num_conditions = len(selected_conditions)
+            num_cols = min(num_conditions, 3)
+            
+            rows = [selected_conditions[i:i+num_cols] for i in range(0, num_conditions, num_cols)]
+            
+            for row in rows:
+                cols = st.columns(len(row))
+                
+                for i, condition in enumerate(row):
+                    with cols[i]:
+                        st.markdown(f"<p style='font-size: 12px; font-weight: bold;'>{condition} impact on eligibility</p>", unsafe_allow_html=True)
+                        
+                        # Grouping Data
+                        condition_eligibility_counts = df_filtered.groupby([condition, eligibility_column[0]]).size().reset_index(name="count")
+                        
+                        # Ensure there is data to plot
+                        if condition_eligibility_counts.empty:
+                            st.warning(f"No data available for {condition}.")
+                            continue
+                        
+                        # Display Chart with fixed bar color and height
+                        fig = px.bar(
+                            condition_eligibility_counts, 
+                            x=condition,  # X-axis: health condition values
+                            y="count",  # Y-axis: count of donors
+                            color=eligibility_column[0],  # Color: Eligibility Status
+                            barmode="stack"
+                        )
+
+                        # Manually set the bar color and figure height
+                        fig.update_traces(marker=dict(color="rgb(128,4,0)"))
+                        fig.update_layout(height=300)  # Set height to 300px
+
+                        st.plotly_chart(fig, use_container_width=True)
+
+
+
 
 
     
