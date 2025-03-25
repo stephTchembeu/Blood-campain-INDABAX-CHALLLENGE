@@ -2,6 +2,7 @@
 # libraries
 import streamlit as st
 import json
+import requests
 import folium
 from streamlit_folium import st_folium
 import plotly.express as px
@@ -9,6 +10,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.seasonal import seasonal_decompose
 from datetime import datetime
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 
 # Function to update active tab
 def set_active_tab(tab_name):
@@ -84,7 +89,16 @@ tabs = st.tabs(tab_names)
 
 # Function to display content for each tab
 def show_tab_content(tab_index):
-    if tab_index == 0:  # Donors distribution
+
+
+
+
+############################################################################################################################
+############################################################################################################################
+#######################################             Donors distribution                  ###################################
+############################################################################################################################
+############################################################################################################################
+    if tab_index == 0:  # 
         col1, col2 = st.columns([0.45,0.45])
         try:
             with col1:
@@ -310,23 +324,19 @@ def show_tab_content(tab_index):
                 print("")
         except:
             print("")
+############################################################################################################################
+############################################################################################################################
     
     
     
+
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    elif tab_index == 1:  # Eligibility
+############################################################################################################################
+############################################################################################################################
+#######################################                Eligibility                  # ######################################
+############################################################################################################################
+############################################################################################################################ 
+    elif tab_index == 1:  # 
         with st.sidebar:
             st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 20px;'>Filter Health Condition</h2>", unsafe_allow_html=True)
             X = st.session_state.df.columns
@@ -407,29 +417,211 @@ def show_tab_content(tab_index):
                         fig.update_layout(height=300)  # Set height to 300px
 
                         st.plotly_chart(fig, use_container_width=True)
+############################################################################################################################
+############################################################################################################################   
+    
+    
+
+
+############################################################################################################################
+############################################################################################################################
+#######################################             Donor profiling        ########################################
+############################################################################################################################
+############################################################################################################################ 
+    elif tab_index == 2:
+        st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Donor profiling</h1>", unsafe_allow_html=True)
+
+        # Sidebar - User selects the eligibility column
+        eligibility_column = st.sidebar.selectbox(
+            "Select Eligibility Column",
+            st.session_state.df.columns,
+            index=st.session_state.df.columns.tolist().index("Eligible au don") if "Eligible au don" in st.session_state.df.columns else 0
+        )
+        
+        # Map eligibility values to numeric scale
+        eligibility_mapping = {
+            "eligible": 1,
+            "temporairement non-eligible": 0.5,
+            "définitivement non-eligible": 0
+        }
+        st.session_state.df[eligibility_column] = st.session_state.df[eligibility_column].map(eligibility_mapping).fillna(0.5)
+
+        # Sidebar - Feature selection
+        selected_features = st.sidebar.multiselect(
+            "Select Features for Clustering",
+            st.session_state.df.columns,
+            default=st.session_state.df.columns[:5]  # Ensuring it selects available columns
+        )
+
+        # ✅ Fix: Handle Empty List in `printer()` Function
+        def printer(list_):
+            if len(list_) == 0:
+                return "No eligibility selected"
+            elif len(list_) == 1:
+                return f"{list_[0]}"
+            elif len(list_) == 2:
+                return f"{list_[0]} and {list_[1]}"
+            else:
+                return f"{list_[0]}, {list_[1]} and {list_[2]}"
+
+        # Get eligibility types
+        eligibility_types = st.session_state.df[eligibility_column].unique() if eligibility_column else []
+        
+        # ✅ Fix: Prevents list index error in multiselect
+        selected_eligibility = st.sidebar.multiselect(
+            "Filter eligibility status:",
+            eligibility_types.tolist() if len(eligibility_types) > 0 else [],
+            default=[eligibility_types[0]] if len(eligibility_types) > 0 else []
+        )
+
+        if selected_features:
+            df_selected = st.session_state.df[selected_features].copy()
+
+            # Handle categorical variables
+            for col in df_selected.select_dtypes(include=["object"]).columns:
+                df_selected[col] = LabelEncoder().fit_transform(df_selected[col])
+
+            # Standardize numerical features
+            scaler = StandardScaler()
+            df_scaled = scaler.fit_transform(df_selected)
+
+            # Number of clusters selection
+            n_clusters = st.sidebar.slider("Number of Clusters", min_value=2, max_value=10, value=3)
+            st.sidebar.markdown("<hr style='border:1px solid #ccc'>", unsafe_allow_html=True) # straight line for the end of the section
+
+            # Clustering
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            clusters = kmeans.fit_predict(df_scaled)
+            st.session_state.df["Cluster"] = clusters
+
+            # PCA for visualization
+            pca = PCA(n_components=2)
+            pca_result = pca.fit_transform(df_scaled)
+            st.session_state.df["PCA1"] = pca_result[:, 0]
+            st.session_state.df["PCA2"] = pca_result[:, 1]
+
+            # Visualization - Cluster Scatter Plot
+            st.subheader("Cluster Visualization")
+            fig = px.scatter(
+                st.session_state.df,
+                x="PCA1",
+                y="PCA2",
+                color=st.session_state.df["Cluster"].astype(str),
+                title="Clusters Based on Selected Features"
+            )
+            st.plotly_chart(fig)
+
+            # Pie Chart - Cluster Distribution
+            st.subheader("Cluster Distribution")
+            cluster_counts = st.session_state.df["Cluster"].value_counts()
+            fig_pie = px.pie(
+                cluster_counts,
+                values=cluster_counts.values,
+                names=cluster_counts.index.astype(str),
+                title="Percentage of Donors per Cluster"
+            )
+            st.plotly_chart(fig_pie)
+
+            # Bar Chart - Cluster Breakdown
+            st.subheader("Cluster Breakdown by Feature")
+            selected_feature_for_bar = st.selectbox("Select Feature for Breakdown", selected_features)
+            if selected_feature_for_bar:
+                fig_bar = px.histogram(
+                    st.session_state.df,
+                    x=selected_feature_for_bar,
+                    color=st.session_state.df["Cluster"].astype(str),
+                    barmode='group',
+                    title=f"Distribution of {selected_feature_for_bar} by Cluster"
+                )
+                st.plotly_chart(fig_bar)
+
+            # Ideal Donor Profiling
+            st.subheader("Ideal Donor Profiling & Insights")
+
+            # Ensure only numeric columns are considered
+            numeric_cols = st.session_state.df.select_dtypes(include=["number"]).columns
+            cluster_summary = st.session_state.df.groupby("Cluster")[numeric_cols].mean()
+
+            # Display eligibility scores for all clusters
+            if eligibility_column in cluster_summary.columns:
+                st.write("### 📊 Eligibility Score for Each Cluster:")
+                eligibility_scores = cluster_summary[eligibility_column]
+
+                # Show scores for each cluster
+                for cluster, score in eligibility_scores.items():
+                    st.write(f"- **Cluster {cluster} Eligibility Score:** {round(score, 3)}")
+
+                # Identify the best cluster
+                ideal_cluster = eligibility_scores.idxmax()
+                st.success(f"✅ **Cluster {ideal_cluster} has the highest eligibility score and represents the ideal donor profile!**")
+
+                # Display detailed profiles for each cluster
+                st.write("### 📌 Detailed Cluster Profiles")
+                for cluster in cluster_summary.index:
+                    st.write(f"#### Cluster {cluster}")
+                    profile = cluster_summary.loc[cluster]
+
+                    # Extract key features dynamically
+                    avg_age = profile.get('Age', np.nan)
+                    hemoglobin = profile.get('Hemoglobin', np.nan)
+                    health_risk = profile.get('Health_Risk_Score', np.nan)
+                    donation_frequency = profile.get('Donation_Frequency', np.nan)
+
+                    if not np.isnan(avg_age):
+                        st.write(f"- **Average Age**: {round(avg_age, 2)}")
+                    if not np.isnan(hemoglobin):
+                        st.write(f"- **Average Hemoglobin Level**: {round(hemoglobin, 2)}")
+                    if not np.isnan(health_risk):
+                        st.write(f"- **Health Risk**: {'Low' if health_risk < 0.5 else 'High'}")
+                    if not np.isnan(donation_frequency):
+                        st.write(f"- **Donation Frequency**: {round(donation_frequency, 2)}")
+
+                    # Highlight the best cluster
+                    if cluster == ideal_cluster:
+                        st.success(f"✅ **Cluster {cluster} is the ideal donor group!**")
+
+                # **Conclusion: Why this cluster is ideal**
+                st.subheader("Final Conclusion")
+
+                # Extract ideal cluster details
+                ideal_profile = cluster_summary.loc[ideal_cluster]
+                conclusion_text = f"""
+                🔎 **Cluster {ideal_cluster} is identified as the best donor group because of the following characteristics:**
+                - **Eligibility Score:** {round(ideal_profile[eligibility_column], 3)}
+                """
+
+                # Dynamically add features if available
+                if not np.isnan(ideal_profile.get('Age', np.nan)):
+                    conclusion_text += f"\n- **Average Age:** {round(ideal_profile['Age'], 2)} years"
+                if not np.isnan(ideal_profile.get('Hemoglobin', np.nan)):
+                    conclusion_text += f"\n- **Average Hemoglobin Level:** {round(ideal_profile['Hemoglobin'], 2)} g/dL"
+                if not np.isnan(ideal_profile.get('Health_Risk_Score', np.nan)):
+                    health_risk_status = "Low" if ideal_profile['Health_Risk_Score'] < 0.5 else "High"
+                    conclusion_text += f"\n- **Health Risk:** {health_risk_status}"
+                if not np.isnan(ideal_profile.get('Donation_Frequency', np.nan)):
+                    conclusion_text += f"\n- **Donation Frequency:** {round(ideal_profile['Donation_Frequency'], 2)} times per year"
+
+                st.success(conclusion_text)
 
 
 
 
 
+############################################################################################################################
+############################################################################################################################ 
+
+
+
     
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    elif tab_index == 3:  # Campaign effectiveness
+############################################################################################################################
+############################################################################################################################
+#######################################             Campaign effectiveness          ########################################
+############################################################################################################################
+############################################################################################################################ 
+    elif tab_index == 3:  
         
         st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Campaign effectiveness</h1>", unsafe_allow_html=True)
         # visualization
@@ -765,24 +957,20 @@ def show_tab_content(tab_index):
                     labels={demo1: demo1, 'count': 'Number of Donors', demo2: demo2}
                 )
                 st.plotly_chart(fig_stacked_bar, use_container_width=True)
-
+############################################################################################################################
+############################################################################################################################
 
 
 
      
-        
+         
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    elif tab_index == 4:  # Donors retention            
+############################################################################################################################
+############################################################################################################################
+#######################################             Donors retention          ##############################################
+############################################################################################################################
+############################################################################################################################
+    elif tab_index == 4:              
             # Previous donation analysis
             st.markdown("<h2 style='font-size: 25px;color:rgb(128,4,0)'>Previous donation analysis</h2>", unsafe_allow_html=True)
 
@@ -898,7 +1086,8 @@ def show_tab_content(tab_index):
                             color=selected_demo
                         )
                         st.plotly_chart(fig_box, use_container_width=True)
-        
+############################################################################################################################
+############################################################################################################################
     
     
     
@@ -915,34 +1104,70 @@ def show_tab_content(tab_index):
     
     
     
-    
-    
-    elif tab_index == 5:  # Survey/Feedback
+############################################################################################################################
+############################################################################################################################
+#######################################             Survey/Feedback          ###############################################
+############################################################################################################################
+############################################################################################################################
+    elif tab_index == 5:  # 
         st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Survey/Feedback</h1>", unsafe_allow_html=True)
         st.write("Survey content goes here...")
-        
+    
+############################################################################################################################
+############################################################################################################################ 
     
     
     
     
     
+
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+############################################################################################################################
+############################################################################################################################
+###############################             Eligibility prediction           ###############################################
+############################################################################################################################
+############################################################################################################################
     
     elif tab_index == 6:  # Eligibility prediction
         st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Eligibility prediction</h1>", unsafe_allow_html=True)
-        st.write("Prediction content goes here...")
+        # Custom CSS to increase the width and height of the input form
+        st.markdown(
+            """
+            <style>
+            .stTextArea textarea {
+                height: 500px;
+                width: 100%;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # Form to input data
+        with st.form(key='input_form'):
+            input_data = st.text_area("Input Data (in JSON format)", "")
+            submit_button = st.form_submit_button(label='Submit')
+
+        # When the form is submitted
+        if submit_button:
+            try:
+                # We convert the input data to a dictionary
+                input_data_dict = json.loads(input_data)
+                
+                # We send a POST request to our Flask API lauched previously
+                response = requests.post("http://127.0.0.1:5001/predict", json=input_data_dict)
+                
+                # Display the response
+                if response.status_code == 200:
+                    st.success("Request successful!")
+                    st.json(response.json())
+                else:
+                    st.error(f"Request failed with status code {response.status_code}")
+            except json.JSONDecodeError:
+                st.error("Invalid JSON format")
+
+############################################################################################################################
+############################################################################################################################
 
 
 
@@ -968,8 +1193,8 @@ def show_tab_content(tab_index):
 
 
 
-
-
+############################################################################################################################
+############################################################################################################################
 # Display content for each tab and update active tab when tab is selected
 with tabs[0]:
     set_active_tab(tab_names[0])
@@ -1013,3 +1238,5 @@ if apply_button:
 if reset_button:
     st.success(f"Filters reset for {st.session_state.active_tab}")
 
+############################################################################################################################
+############################################################################################################################
