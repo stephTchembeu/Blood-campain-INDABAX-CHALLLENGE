@@ -1,32 +1,7 @@
 # initialize an app just by running the python file with streamlit
-# libraries
-import streamlit as st
-import json
-import requests
-import folium
-from streamlit_folium import st_folium
-import plotly.express as px
-import pandas as pd
-import matplotlib.pyplot as plt
-from statsmodels.tsa.seasonal import seasonal_decompose
-from datetime import datetime
-import numpy as np
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
+from libs import *
+from functions import *
 
-# Function to update active tab
-def set_active_tab(tab_name):
-    st.session_state.active_tab = tab_name
-
-# here we generated color for the map
-def get_gradient_color(value, min_value, max_value):
-    """Returns an RGB color between white (255,255,255) and burgundy (128,4,0)"""
-    ratio = (value - min_value) / (max_value - min_value) if max_value > min_value else 0
-    r = int(255 - (127 * ratio))  # 255 → 128
-    g = int(255 - (251 * ratio))  # 255 → 4
-    b = int(255 - (255 * ratio))  # 255 → 0
-    return f"rgb({r},{g},{b})"
 
 
 
@@ -35,7 +10,7 @@ def get_gradient_color(value, min_value, max_value):
 # set title and icon
 st.set_page_config(
     page_title="GO-TEC Dashboard",
-    page_icon="images/logo.png",
+    page_icon="../images/logo.png",
     layout="wide",
     initial_sidebar_state="auto"
 )
@@ -43,8 +18,8 @@ st.set_page_config(
 if 'active_tab' not in st.session_state:
     st.session_state.active_tab = "Donnors distribution"
 # Load the logos we use
-SIMPLE_LOGO = "images/my_logo.png"
-LOGO_WITH_TEXT = "images/my_logo_with_text.png"
+SIMPLE_LOGO = "../images/my_logo.png"
+LOGO_WITH_TEXT = "../images/my_logo_with_text.png"
 options = [SIMPLE_LOGO, LOGO_WITH_TEXT]
 
 # set our logo
@@ -89,7 +64,7 @@ tabs = st.tabs(tab_names)
 
 # Function to display content for each tab
 def show_tab_content(tab_index):
-
+    global printer
 
 
 
@@ -109,7 +84,7 @@ def show_tab_content(tab_index):
                     st.session_state.map_data = None
 
                 # load the AMD file for geolocate our targeted arrondissement
-                geojson_path = "geoBoundaries-CMR-ADM3.geojson"
+                geojson_path = "geo_file/geoBoundaries-CMR-ADM3.geojson"
                 with open(geojson_path, "r", encoding="utf-8") as f:
                     cameroon_geojson = json.load(f)
 
@@ -338,23 +313,12 @@ def show_tab_content(tab_index):
 ############################################################################################################################ 
     elif tab_index == 1:  # 
         with st.sidebar:
-            st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 20px;'>Filter Health Condition</h2>", unsafe_allow_html=True)
-            X = st.session_state.df.columns
-            health_conditions_columns = [x for x in X if 'raison'.lower() in x.lower()]
+            set_sidebar_title("Filter Health Condition")
+            health_conditions_columns = [x for x in st.session_state.df.columns if 'raison'.lower() in x.lower()]
             df = st.session_state.df
 
             # Select the eligibility column
-            eligibility_column = st.sidebar.multiselect("Choose the health condition:", df.columns)
-            
-            if eligibility_column:  # Ensure a column is selected
-                eligibility_types = df[eligibility_column[0]].unique()
-                selected_eligibility = st.multiselect("Filter eligibility status:", eligibility_types, default=eligibility_types[0])
-            else:
-                selected_eligibility = []
-
-            # Select Health Condition Columns to see their impact on eligibility
-            selected_conditions = st.multiselect("🩺 Select health conditions:", health_conditions_columns)
-            
+            eligibility_column, selected_eligibility, selected_conditions = get_eligibility_observations_param(df,health_conditions_columns)
             # Straight line for the end of this filter block
             st.sidebar.markdown("<hr style='border:1px solid #ccc'>", unsafe_allow_html=True)
         
@@ -363,60 +327,21 @@ def show_tab_content(tab_index):
             df_filtered = df[df[eligibility_column[0]].isin(selected_eligibility)]
         else:
             df_filtered = df.copy()
-        
-        # Display Key Statistics
-        def printer(list_):
-            if len(list_) == 1:
-                return f"{list_[0]}"
-            elif len(list_) == 2:
-                return f"{list_[0]} and {list_[1]}"
-            else:
-                return f"{list_[0]}, {list_[1]} and {list_[2]}"
 
-        st.subheader("Key statistics")
+        # show titles of the tab      
+        show_title("Eligibility",30)
+        show_title("Key statistics",20)
+
+            
         col1, col2 = st.columns(2)
-        col1.metric("Total donors ", len(df))
+        
         col2.metric(f"Number of donors {printer(selected_eligibility)}", len(df_filtered))
-
+        col1.metric("Total donors ", len(df))
         # Eligibility Analysis
         if selected_conditions:
-            st.subheader("Eligibility analysis")
-            
-            # Arrange plots in rows with max 3 per row
-            num_conditions = len(selected_conditions)
-            num_cols = min(num_conditions, 3)
-            
-            rows = [selected_conditions[i:i+num_cols] for i in range(0, num_conditions, num_cols)]
-            
-            for row in rows:
-                cols = st.columns(len(row))
-                
-                for i, condition in enumerate(row):
-                    with cols[i]:
-                        st.markdown(f"<p style='font-size: 12px; font-weight: bold;'>{condition} impact on eligibility</p>", unsafe_allow_html=True)
-                        
-                        # Grouping Data
-                        condition_eligibility_counts = df_filtered.groupby([condition, eligibility_column[0]]).size().reset_index(name="count")
-                        
-                        # Ensure there is data to plot
-                        if condition_eligibility_counts.empty:
-                            st.warning(f"No data available for {condition}.")
-                            continue
-                        
-                        # Display Chart with fixed bar color and height
-                        fig = px.bar(
-                            condition_eligibility_counts, 
-                            x=condition,  # X-axis: health condition values
-                            y="count",  # Y-axis: count of donors
-                            color=eligibility_column[0],  # Color: Eligibility Status
-                            barmode="stack"
-                        )
-
-                        # Manually set the bar color and figure height
-                        fig.update_traces(marker=dict(color="rgb(128,4,0)"))
-                        fig.update_layout(height=300)  # Set height to 300px
-
-                        st.plotly_chart(fig, use_container_width=True)
+            show_title("Eligibility analysis",20)
+            show_el_plots(selected_conditions,df_filtered,eligibility_column)
+        
 ############################################################################################################################
 ############################################################################################################################   
     
@@ -453,7 +378,7 @@ def show_tab_content(tab_index):
             default=st.session_state.df.columns[:5]  # Ensuring it selects available columns
         )
 
-        # ✅ Fix: Handle Empty List in `printer()` Function
+        # fix: Handle Empty List in `printer()` Function
         def printer(list_):
             if len(list_) == 0:
                 return "No eligibility selected"
@@ -467,7 +392,7 @@ def show_tab_content(tab_index):
         # Get eligibility types
         eligibility_types = st.session_state.df[eligibility_column].unique() if eligibility_column else []
         
-        # ✅ Fix: Prevents list index error in multiselect
+        # fix: Prevents list index error in multiselect
         selected_eligibility = st.sidebar.multiselect(
             "Filter eligibility status:",
             eligibility_types.tolist() if len(eligibility_types) > 0 else [],
@@ -602,11 +527,6 @@ def show_tab_content(tab_index):
                     conclusion_text += f"\n- **Donation Frequency:** {round(ideal_profile['Donation_Frequency'], 2)} times per year"
 
                 st.success(conclusion_text)
-
-
-
-
-
 ############################################################################################################################
 ############################################################################################################################ 
 
@@ -616,16 +536,13 @@ def show_tab_content(tab_index):
     
     
     
-############################################################################################################################
-############################################################################################################################
-#######################################             Campaign effectiveness          ########################################
-############################################################################################################################
-############################################################################################################################ 
+#########################################################################
+###########              Campaign effectiveness            ##############
+######################################################################### 
     elif tab_index == 3:  
+        show_title("Campaign effectiveness",30)
         
-        st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Campaign effectiveness</h1>", unsafe_allow_html=True)
         # visualization
-        # Display Dataset Info
         with st.expander("Dataset Overview"):
             st.subheader("Dataset Preview")
             st.write(st.session_state.df.head())
@@ -641,11 +558,6 @@ def show_tab_content(tab_index):
         
         df = st.session_state.df
 
-        # Basic data cleaning
-        # Handle missing values in the eligibility column
-        #if st.session_state.eligibility_column in df.columns:
-         #   df[st.session_state.eligibility_column] = df[st.session_state.eligibility_column].str.lower().fillna("unknown")
-        
         # Convert dates to datetime format
         df[st.session_state.date_column] = pd.to_datetime(df[st.session_state.date_column], errors='coerce')
         df[st.session_state.last_donation_column] = pd.to_datetime(df[st.session_state.last_donation_column], errors='coerce')
@@ -673,9 +585,8 @@ def show_tab_content(tab_index):
         df["Year-Month"] = df[st.session_state.date_column].dt.to_period("M")
         
         # Allow user to filter by year
-
-        st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 20px;'>filter on campains and donors</h2>", unsafe_allow_html=True)
-        available_years = sorted(df["Year"].dropna().unique().astype(int))
+        set_sidebar_title("filter on campains and donors")
+        available_years = sorted(df["Year"].unique().astype(int))
         selected_years = st.sidebar.multiselect("Select year(s) to analyze:", available_years, default=available_years)
         if selected_years:
             df_filtered = df[df["Year"].isin(selected_years)]
@@ -957,217 +868,64 @@ def show_tab_content(tab_index):
                     labels={demo1: demo1, 'count': 'Number of Donors', demo2: demo2}
                 )
                 st.plotly_chart(fig_stacked_bar, use_container_width=True)
-############################################################################################################################
-############################################################################################################################
+##########################################################################
+##########################################################################
 
 
 
      
          
     
-############################################################################################################################
-############################################################################################################################
-#######################################             Donors retention          ##############################################
-############################################################################################################################
-############################################################################################################################
+#########################################################################
+###########            Previous donation analysis          ##############
+#########################################################################
     elif tab_index == 4:              
             # Previous donation analysis
-            st.markdown("<h2 style='font-size: 25px;color:rgb(128,4,0)'>Previous donation analysis</h2>", unsafe_allow_html=True)
-
+            show_title("Previous donation analysis",30)
+            # rename the data and filtered data in the session_state
             df = st.session_state.df
             df_filtered = st.session_state.df_filtered
-            if st.session_state.has_donated_before_column in df.columns:
-                # Clean up the response data (assuming "oui" means "yes" and anything else means "no")
-                df_filtered[st.session_state.has_donated_before_column] = df_filtered[st.session_state.has_donated_before_column].fillna("non")
-                df_filtered['Has_Donated_Before'] = df_filtered[st.session_state.has_donated_before_column].str.lower().apply(
-                    lambda x: "Has donated before" if x == "oui" else "First-time donor"
-                )
-                
-                # Plot as a donut chart
-                donation_history = df_filtered['Has_Donated_Before'].value_counts().reset_index()
-                donation_history.columns = ['status', 'count']
-                
-                fig_donut = px.pie(
-                    donation_history,
-                    values='count',
-                    names='status',
-                    title="Previous Donation History",
-                    color='status',
-                    hole=0.4,  # Donut chart
-                    color_discrete_map={
-                        "First-time donor": "rgb(128,4,0)",
-                        "Has donated before": "rgb(23,158,14)"
-                    }
-                )
-                fig_donut.update_layout(legend_orientation="h", legend_y=-0.2)
-                
-                # Previous donation history trends over time
-                monthly_history = df_filtered.groupby([df_filtered[st.session_state.date_column].dt.to_period("M"), "Has_Donated_Before"]).size().reset_index()
-                monthly_history.columns = ['month', 'status', 'count']
-                monthly_history['month'] = monthly_history['month'].astype(str)
-                
-                fig_trend = px.line(
-                    monthly_history,
-                    x='month',
-                    y='count',
-                    color='status',
-                    title="First-time vs Returning Donors Over Time",
-                    labels={'month': 'Month', 'count': 'Number of Donors', 'status': 'Donor Status'},
-                    color_discrete_map={
-                        "First-time donor": "rgb(128,4,0)",
-                        "Has donated before": "rgb(23,158,14)"
-                    }
-                )
-                fig_trend.update_layout(xaxis_tickangle=-45)
-                
-                # Display side by side with ratio 0.4 for donut and 0.6 for trend
-                col1, col2 = st.columns([0.4, 0.6])
-                with col1:
-                    st.plotly_chart(fig_donut, use_container_width=True)
-                with col2:
-                    st.plotly_chart(fig_trend, use_container_width=True)
-
+            # plot the pie and trend of the first time donor and none first time donors
+            show_recurrent_pie_trend(df,df_filtered)
             # Calculate donation intervals for repeat donors
-            if st.session_state.last_donation_column in df.columns:
-                df_filtered["Donation_Interval"] = (df_filtered[st.session_state.date_column] - df_filtered[st.session_state.last_donation_column]).dt.days
-                repeat_donors = df_filtered[df_filtered["Donation_Interval"].notna()]
-                
-                # Filter out unreasonable intervals (negative or extremely large)
-                reasonable_intervals = repeat_donors[
-                    (repeat_donors["Donation_Interval"] > 0) & 
-                    (repeat_donors["Donation_Interval"] < 1000)  # Assume donations over ~3 years are data errors
-                ]
-                
-                if not reasonable_intervals.empty:
-                    st.subheader("Time Between Donations")
-                    
-                    # Create histogram of donation intervals
-                    fig_hist = px.histogram(
-                        reasonable_intervals,
-                        x="Donation_Interval",
-                        nbins=30,
-                        title="Distribution of Time Between Donations",
-                        labels={"Donation_Interval": "Days Between Donations", "count": "Number of Donors"},
-                        color_discrete_sequence=["#C62828"]
-                    )
-                    
-                    # Add median and mean lines
-                    median_interval = reasonable_intervals["Donation_Interval"].median()
-                    mean_interval = reasonable_intervals["Donation_Interval"].mean()
-                    
-                    fig_hist.add_vline(x=median_interval, line_dash="dash", line_color="black", annotation_text=f"Median: {median_interval:.0f} days")
-                    fig_hist.add_vline(x=mean_interval, line_dash="dot", line_color="blue", annotation_text=f"Mean: {mean_interval:.0f} days")
-                    fig_hist.add_vline(x=56, line_dash="dash", line_color="green", annotation_text="Min. Safe: 56 days")
-                    
-                    st.plotly_chart(fig_hist, use_container_width=True)
-                    
-                    # Display median/mean intervals
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Median Time Between Donations", f"{median_interval:.0f} days")
-                    with col2:
-                        st.metric("Average Time Between Donations", f"{mean_interval:.0f} days")
-                    
-                    # Analyze donation intervals by demographic factors
-                    st.subheader("Donation Intervals by Demographic")
-                    
-                    # Select demographic to analyze
-                    demo_options = [col for col in st.session_state.demographic_options if col in reasonable_intervals.columns]
-                    if demo_options:
-                        selected_demo = st.selectbox("Select demographic to analyze donation intervals:", demo_options)
-                        
-                        # Box plot of intervals by demographic
-                        fig_box = px.box(
-                            reasonable_intervals,
-                            x=selected_demo,
-                            y="Donation_Interval",
-                            title=f"Distribution of Donation Intervals by {selected_demo}",
-                            labels={selected_demo: selected_demo, "Donation_Interval": "Days Between Donations"},
-                            color=selected_demo
-                        )
-                        st.plotly_chart(fig_box, use_container_width=True)
-############################################################################################################################
-############################################################################################################################
+            donation_intervale(df,df_filtered)
+##########################################################################
+##########################################################################
     
+        
+#########################################################################
+###########                 Survey/Feedback               ###############
+#########################################################################
+    elif tab_index == 5:  
+        show_title("Survey/Feedback",30)
+        
+#########################################################################
+#########################################################################
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-############################################################################################################################
-############################################################################################################################
-#######################################             Survey/Feedback          ###############################################
-############################################################################################################################
-############################################################################################################################
-    elif tab_index == 5:  # 
-        st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Survey/Feedback</h1>", unsafe_allow_html=True)
-        st.write("Survey content goes here...")
-    
-############################################################################################################################
-############################################################################################################################ 
-    
-    
-    
-    
-    
-
-    
-############################################################################################################################
-############################################################################################################################
-###############################             Eligibility prediction           ###############################################
-############################################################################################################################
-############################################################################################################################
-    
-    elif tab_index == 6:  # Eligibility prediction
-        st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Eligibility prediction</h1>", unsafe_allow_html=True)
+#########################################################################
+###########              Eligibility prediction           ###############
+#########################################################################
+    elif tab_index == 6:
+        # title of the tab section
+        show_title("Eligibility prediction",30)
         # Custom CSS to increase the width and height of the input form
         st.markdown(
             """
             <style>
             .stTextArea textarea {
-                height: 500px;
+                height: 200px;
                 width: 100%;
             }
             </style>
             """,
             unsafe_allow_html=True
         )
-
-        # Form to input data
-        with st.form(key='input_form'):
-            input_data = st.text_area("Input Data (in JSON format)", "")
-            submit_button = st.form_submit_button(label='Submit')
-
-        # When the form is submitted
-        if submit_button:
-            try:
-                # We convert the input data to a dictionary
-                input_data_dict = json.loads(input_data)
-                
-                # We send a POST request to our Flask API lauched previously
-                response = requests.post("http://127.0.0.1:5001/predict", json=input_data_dict)
-                
-                # Display the response
-                if response.status_code == 200:
-                    st.success("Request successful!")
-                    st.json(response.json())
-                else:
-                    st.error(f"Request failed with status code {response.status_code}")
-            except json.JSONDecodeError:
-                st.error("Invalid JSON format")
-
-############################################################################################################################
-############################################################################################################################
+        # Show the formular to get the data fro prediction 
+        show_pred_form()
+        # When the form is submitted 
+        try_pred()
+#########################################################################
+#########################################################################
 
 
 
@@ -1193,50 +951,47 @@ def show_tab_content(tab_index):
 
 
 
-############################################################################################################################
-############################################################################################################################
-# Display content for each tab and update active tab when tab is selected
-with tabs[0]:
-    set_active_tab(tab_names[0])
-    show_tab_content(0)
+#########################################################################
+#########################################################################
+# Display content for each tab and update active tab when tab is selected#
+
+   
+
+try:
+    #print("")
+    with tabs[0]:
+        set_active_tab(tab_names[0])
+        show_tab_content(0)
+
+    try:
+        with tabs[1]:
+            set_active_tab(tab_names[1])
+            show_tab_content(1)
+    except IndexError:
+        with tabs[1]:
+            indication_message("Ensure that you have fill the filter for at least the eligibility to get the informations.") 
+
+
+    with tabs[2]:
+        set_active_tab(tab_names[2])
+        show_tab_content(2)
+    with tabs[3]:
+        set_active_tab(tab_names[3])
+        show_tab_content(3)
     
-with tabs[1]:
-    set_active_tab(tab_names[1])
-    show_tab_content(1)
-    
-with tabs[2]:
-    set_active_tab(tab_names[2])
-    show_tab_content(2)
-    
-with tabs[3]:
-    set_active_tab(tab_names[3])
-    show_tab_content(3)
-    
-with tabs[4]:
-    set_active_tab(tab_names[4])
-    show_tab_content(4)
-    
-with tabs[5]:
-    set_active_tab(tab_names[5])
-    show_tab_content(5)
-    
-with tabs[6]:
-    set_active_tab(tab_names[6])
-    show_tab_content(6)
+    #with tabs[4]:
+    #    set_active_tab(tab_names[4])
+    #    show_tab_content(4) 
+    #with tabs[5]:
+    #    set_active_tab(tab_names[5])
+    #    show_tab_content(5)
+except AttributeError:
+    st.warning("Ensure that you have import the dataset before continue please !")
 
-# Add filter action buttons
-col1, col2 = st.sidebar.columns([0.45,0.45])
-with col1:
-    apply_button = st.button("Apply Filters")
-with col2:
-    reset_button = st.button("Reset Filters")
 
-# Handle filter actions
-if apply_button:
-    st.sidebar.success(f"Filters applied for {st.session_state.active_tab}")
     
-if reset_button:
-    st.success(f"Filters reset for {st.session_state.active_tab}")
-
-############################################################################################################################
-############################################################################################################################
+#with tabs[6]:
+#    set_active_tab(tab_names[6])
+#    show_tab_content(6)
+#################################
+#################################
