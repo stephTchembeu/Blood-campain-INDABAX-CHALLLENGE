@@ -16,24 +16,30 @@ The central part contain the navigatio to naviguate amoung different otions and 
 ![interface](images/readme_imgs/dashboard_view.png)
 
 ## Upload the dataset.
+
 To ensure you have upload the dataset on which you want to extract information you get a customise message which indicates that first we need to load the dataset.</br>
 To upload the dataset you will need to go in the sidebar and click on the upload button to load your <b style="font-size:15px;">.csv</b> file.</br>
 After the data been load you will start get information in the main part of the dashboard.</br>
 Each of the tab in the nav contains specifique information on each on the proposing question. As tab we get the :
+
 - <b style="font-size:15px;">Donors distributions</b> : which show the distribution of the candidates over the different arrondissement in the dataset.
-- <b style="font-size:15px;">The Eligibility</b> : this tab give you information on the different proportion of candidate according to different heath condition which impat the eligibility.  
-- <b style="font-size:15px;">Donors profiling</b>:  here we study the different profile of each donos and build some cluster base on similar information.
-- <b style="font-size:15px;">campaign effectiveness</b>: here we give you insights on the different ongoing facts all over the donation campaign duration. 
+- <b style="font-size:15px;">The Eligibility</b> : this tab give you information on the different proportion of candidate according to different heath condition which impat the eligibility.
+- <b style="font-size:15px;">Donors profiling</b>: here we study the different profile of each donos and build some cluster base on similar information.
+- <b style="font-size:15px;">campaign effectiveness</b>: here we give you insights on the different ongoing facts all over the donation campaign duration.
 - <b style="font-size:15px;">Eligibility prediction</b>: in this last section you can get the prediction of some one from who you have collected data.
+  [donors_interface](images/readme_imgs/nav.png)
 
 # Donors distribution
+
 Putting the cursor on the map gives the number of donors in each department and increasing or tapping on the map outputs the distribution of selected quarter in the map showing eligibility and non-eligibility.
 
-# Eligibility 
+# Eligibility
+
 Next moving to the which is the eligibility Tab gives information about the number of donors. We have a filter which gives us the opportunity to move between the three unique values of ELIGIBLE AU DON. When we choose the health conditions for definitely non eligible it will display no eligible donors
 when temporary non eligible is taken it will display the number of non eligible per in total number of non eligible
 
 # Ideal Donor Profile
+
 Here we still choose variable related to eligibility and select features we want to include in our clusters. the cluster with the highest number of eligible donors is considered and later eligibility score computer. The average age of the best donors is outputted which indicates the best donors related to our clusters
 
 # Campaign effectiveness
