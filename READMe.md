@@ -2,7 +2,7 @@
 
 # Prerequisites
 
-upload the project, open it in a terminal go into the folder script and:
+Upload the project, open it in a terminal go into the folder script and:
 
 #-run streamlit run dash_app.py
 
