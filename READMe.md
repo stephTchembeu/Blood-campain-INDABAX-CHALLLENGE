@@ -1,4 +1,4 @@
-# Go-Tech DASHBOARD
+![logo](images/my_logo_with_text.png)
 
 # Prerequisites
 
@@ -10,7 +10,7 @@ Upload the project, open it in a terminal go into the folder script and run:
 the dashboard show in your web navigator is a fully interactive dashboard made to be intuitive for the user.</br>
 It is compose of two parts the main part which is showing you information from data and the sidebar used to give you
 more access to what you may want
-<img src="images/readme_imgs/main-view.png" alt="Dashboard-view" width="400" height="300"/>
+<img src="images/readme_imgs/dashboard_view.png" alt="Dashboard-view" width="400" height="300"/>
 
 # Map distribution per arrondissement and Quarter
 
