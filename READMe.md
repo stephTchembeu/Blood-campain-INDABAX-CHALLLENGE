@@ -21,7 +21,7 @@ To ensure you have upload the dataset on which you want to extract information y
 
 ## Upload the dataset.
 
-To upload the dataset you will need to go in the sidebar and click on the upload button to load your <h2 style="font-size:15px;">.csv</h2> file.
+To upload the dataset you will need to go in the sidebar and click on the upload button to load your <b style="font-size:15px;">.csv</b> file.
 
 After uploading the dataset(CSV), we will be given the opportunity to select the eligibility column and if this is not chosen it will show error. so after loading the dataset we choose the column "ELIGIBLE AU DON" The filter for this section is given immediately we do select the section "ELIGIBLE AU DON" which are "temporary non eligible, definitely non eligible and eligible. This tells us that choosing the section of definitely eligible won't output because of sparsity of those columns
 
