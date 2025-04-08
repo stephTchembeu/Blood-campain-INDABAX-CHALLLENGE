@@ -1,4 +1,4 @@
-from libs import *
+from main_app_requirement import *
 
 
 ## Comon functions 
@@ -209,6 +209,7 @@ def donation_intervale(data,filtered):
 
                     # Analyze donation intervals by demographic factors
                     donation_by_demographie(reasonable_intervals)                    
+
 # demographie of donors
 def donation_by_demographie(intervals):
     st.subheader("Donation Intervals by Demographic")

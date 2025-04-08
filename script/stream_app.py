@@ -1,11 +1,6 @@
 # initialize an app just by running the python file with streamlit
-from libs import *
+from main_app_requirement import *
 from functions import *
-
-
-
-
-
 
 # set title and icon
 st.set_page_config(
@@ -27,7 +22,7 @@ st.logo(options[1], icon_image=options[0])
 # set the hearder in the main age as our brand image
 st.image(options[1])  
 # Sidebar file uploader
-st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 40px;'>Upload dataset</h2>", unsafe_allow_html=True) # we set the title of the upload section
+st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 25px;'>Upload dataset</h2>", unsafe_allow_html=True) # we set the title of the upload section
 try:
     uploaded_file = st.sidebar.file_uploader("Upload your CSV dataset", type=["csv"]) # we set the uploader form
     st.session_state.df = pd.read_csv(uploaded_file)
@@ -100,19 +95,17 @@ def show_tab_content(tab_index):
                 m = folium.Map(location=[4.0511, 9.7679], zoom_start=11)
 
                 # we generate colors for arrondissement
-                # Use session state to keep colors consistent
                 if 'color_mapping' not in st.session_state:
-                    #departments = [feature["properties"]["shapeName"] for feature in cameroon_geojson["features"]]
-                    #st.session_state.color_mapping = {dept: f"#{random.randint(0, 0xFFFFFF):06x}" for dept in departments}
                     # Generate color mapping for arrondissements
                     st.session_state.color_mapping = {
                         arrondissement: get_gradient_color(count, st.session_state.df["Arrondissement de residence"].value_counts().min(), st.session_state.df["Arrondissement de residence"].value_counts().max())
                         for arrondissement, count in st.session_state.df["Arrondissement de residence"].value_counts().items()
                     }
+
                 # Ajouter les départements à la carte avec un style gris par défaut et des couleurs au survol
                 folium.GeoJson(
                     cameroon_geojson,
-                    name="Cameroo   n arrodissement",
+                    name="Cameroon arrodissement",
                     style_function=lambda feature: {
                         "fillColor": "#CCCCCC",  # Gray color for all areas by default
                         "color": "#999999",      # Darker gray border
@@ -356,177 +349,458 @@ def show_tab_content(tab_index):
     elif tab_index == 2:
         st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Donor profiling</h1>", unsafe_allow_html=True)
 
-        # Sidebar - User selects the eligibility column
-        eligibility_column = st.sidebar.selectbox(
-            "Select Eligibility Column",
-            st.session_state.df.columns,
-            index=st.session_state.df.columns.tolist().index("Eligible au don") if "Eligible au don" in st.session_state.df.columns else 0
-        )
-        
-        # Map eligibility values to numeric scale
-        eligibility_mapping = {
-            "eligible": 1,
-            "temporairement non-eligible": 0.5,
-            "définitivement non-eligible": 0
-        }
-        st.session_state.df[eligibility_column] = st.session_state.df[eligibility_column].map(eligibility_mapping).fillna(0.5)
+        # Custom CSS for better styling
+        st.markdown("""
+        <style>
+            .main-header {
+                font-size: 2rem;
+                color: rgb(128,4,0);
+                text-align: center;
+            }
+            .section-header {
+                font-size: 1rem;
+                color: rgb(128,4,0);
+                padding-top: 1rem;
+            }
+            .stat-box {
+                background-color: #f5f5f5;
+                padding: 20px;
+                border-radius: 5px;
+                box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+            }
+            .note-box {
+                background-color: #FFF3CD;
+                border-left: 5px solid #FFC107;
+                padding: 10px 15px;
+                margin: 10px 0;
+                border-radius: 0 5px 5px 0;
+            }
+        </style>
+        """, unsafe_allow_html=True)
 
-        # Sidebar - Feature selection
-        selected_features = st.sidebar.multiselect(
-            "Select Features for Clustering",
-            st.session_state.df.columns,
-            default=st.session_state.df.columns[:5]  # Ensuring it selects available columns
-        )
+       
+        # Sidebar section
+        with st.sidebar:
+            st.sidebar.markdown("<h2 style='color: rgb(128,4,0); font-size: 20px;'>Clustering filter</h2>", unsafe_allow_html=True) 
+            n_clusters = st.slider("Number of clusters", min_value=2, max_value=10, value=3)
+            st.sidebar.markdown("<hr style='border:1px solid #ccc'>", unsafe_allow_html=True)
+        # Main dashboard content
+        if st.session_state.df is not None:
+            # Load data
+            try:
+                df = st.session_state.df
+                # Display a sample of the raw data
+                st.markdown("<h2 class='section-header'>Raw Data Sample</h2>", unsafe_allow_html=True)
+                st.dataframe(df.head())
+                
+                # Basic data info
+                st.markdown("<h2 class='section-header'>Data Overview</h2>", unsafe_allow_html=True)
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown("<div class='stat-box'>", unsafe_allow_html=True)
+                    st.metric("Total Records", f"{df.shape[0]:,}")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                with col2:
+                    st.markdown("<div class='stat-box'>", unsafe_allow_html=True)
+                    st.metric("Features", f"{df.shape[1]}")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                with col3:
+                    st.markdown("<div class='stat-box'>", unsafe_allow_html=True)
+                    missing_percentage = (df.isnull().sum().sum() / (df.shape[0] * df.shape[1])) * 100
+                    st.metric("Missing Values", f"{missing_percentage:.2f}%")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                
+                # Column selection
+                st.markdown("<h2 class='section-header'>Column Selection</h2>", unsafe_allow_html=True)
+                
+                # Feature selection note
+                st.markdown("""
+                <div class='note-box'>
+                    <strong>Important Note:</strong> Please select only relevant features for clustering. 
+                    Features that don't indicate eligibility or donor characteristics should not be included 
+                    as they may bias the clustering results.
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Auto-detect numeric and categorical columns
+                numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+                categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
 
-        # fix: Handle Empty List in `printer()` Function
-        def printer(list_):
-            if len(list_) == 0:
-                return "No eligibility selected"
-            elif len(list_) == 1:
-                return f"{list_[0]}"
-            elif len(list_) == 2:
-                return f"{list_[0]} and {list_[1]}"
-            else:
-                return f"{list_[0]}, {list_[1]} and {list_[2]}"
+                # Let user select columns
+                st.subheader("Select Numeric Features")
+                st.markdown("Choose numeric features like age, hemoglobine levels, etc.")
 
-        # Get eligibility types
-        eligibility_types = st.session_state.df[eligibility_column].unique() if eligibility_column else []
-        
-        # fix: Prevents list index error in multiselect
-        selected_eligibility = st.sidebar.multiselect(
-            "Filter eligibility status:",
-            eligibility_types.tolist() if len(eligibility_types) > 0 else [],
-            default=[eligibility_types[0]] if len(eligibility_types) > 0 else []
-        )
+                # User selection
+                # Improved hemoglobin detection with regex
+                hemoglobin_pattern = re.compile(r'hemoglobine?|taux', re.IGNORECASE)
 
-        if selected_features:
-            df_selected = st.session_state.df[selected_features].copy()
-
-            # Handle categorical variables
-            for col in df_selected.select_dtypes(include=["object"]).columns:
-                df_selected[col] = LabelEncoder().fit_transform(df_selected[col])
-
-            # Standardize numerical features
-            scaler = StandardScaler()
-            df_scaled = scaler.fit_transform(df_selected)
-
-            # Number of clusters selection
-            n_clusters = st.sidebar.slider("Number of Clusters", min_value=2, max_value=10, value=3)
-            st.sidebar.markdown("<hr style='border:1px solid #ccc'>", unsafe_allow_html=True) # straight line for the end of the section
-
-            # Clustering
-            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-            clusters = kmeans.fit_predict(df_scaled)
-            st.session_state.df["Cluster"] = clusters
-
-            # PCA for visualization
-            pca = PCA(n_components=2)
-            pca_result = pca.fit_transform(df_scaled)
-            st.session_state.df["PCA1"] = pca_result[:, 0]
-            st.session_state.df["PCA2"] = pca_result[:, 1]
-
-            # Visualization - Cluster Scatter Plot
-            st.subheader("Cluster Visualization")
-            fig = px.scatter(
-                st.session_state.df,
-                x="PCA1",
-                y="PCA2",
-                color=st.session_state.df["Cluster"].astype(str),
-                title="Clusters Based on Selected Features"
-            )
-            st.plotly_chart(fig)
-
-            # Pie Chart - Cluster Distribution
-            st.subheader("Cluster Distribution")
-            cluster_counts = st.session_state.df["Cluster"].value_counts()
-            fig_pie = px.pie(
-                cluster_counts,
-                values=cluster_counts.values,
-                names=cluster_counts.index.astype(str),
-                title="Percentage of Donors per Cluster"
-            )
-            st.plotly_chart(fig_pie)
-
-            # Bar Chart - Cluster Breakdown
-            st.subheader("Cluster Breakdown by Feature")
-            selected_feature_for_bar = st.selectbox("Select Feature for Breakdown", selected_features)
-            if selected_feature_for_bar:
-                fig_bar = px.histogram(
-                    st.session_state.df,
-                    x=selected_feature_for_bar,
-                    color=st.session_state.df["Cluster"].astype(str),
-                    barmode='group',
-                    title=f"Distribution of {selected_feature_for_bar} by Cluster"
+                selected_numeric = st.multiselect(
+                    "Numeric Features", 
+                    options=numeric_cols,
+                    default=[col for col in numeric_cols if 
+                            re.search(r'age|âge|taux|hemoglobine?', col, re.IGNORECASE)]
                 )
-                st.plotly_chart(fig_bar)
+                        
+                st.subheader("Select Categorical Features")
+                st.markdown("Choose categorical features like gender, profession, location, etc.")
+                selected_categorical = st.multiselect(
+                    "Categorical Features", 
+                    options=categorical_cols,
+                    default=[col for col in categorical_cols if any(keyword in col.lower() for keyword in 
+                                                                ['genre', 'gender', 'sexe', 'domain', 'profession', 'ville', 'city', 'location'])]
+                )
+                
+                # Only proceed with clustering if columns are selected
+                if len(selected_numeric) > 0 and len(selected_categorical) > 0:
+                    # Preprocessing and clustering section
+                    st.markdown("<h2 class='section-header'>Donor Profiling with Clustering</h2>", unsafe_allow_html=True)
+                    
+                    with st.spinner("Processing data and creating clusters..."):
+                        # Select and clean data
+                        df1 = df[selected_numeric + selected_categorical].copy()
+                        
+                        # Display missing values before cleaning
+                        missing_cols = df1.columns[df1.isna().any()].tolist()
+                        if missing_cols:
+                            st.markdown("<div class='note-box'>", unsafe_allow_html=True)
+                            st.write("Missing values detected in the following columns:")
+                            for col in missing_cols:
+                                missing_count = df1[col].isna().sum()
+                                missing_percent = (missing_count / len(df1)) * 100
+                                st.write(f"- {col}: {missing_count} values ({missing_percent:.2f}%)")
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        
+                        # Drop rows where categorical features are missing
+                        df1 = df1.dropna(subset=selected_categorical)
+                        
+                        # Clean column values for categorical features
+                        for col in selected_categorical:
+                            if df1[col].dtype == 'object':
+                                df1[col] = df1[col].astype(str).str.strip().str.lower()
+                        
+                        # Preprocessing pipeline
+                        preprocessor = ColumnTransformer(
+                            transformers=[
+                                ('num', Pipeline(steps=[
+                                    ('imputer', SimpleImputer(strategy='mean')),
+                                    ('scaler', StandardScaler())
+                                ]), selected_numeric),
+                                
+                                ('cat', Pipeline(steps=[
+                                    ('imputer', SimpleImputer(strategy='most_frequent')),
+                                    ('onehot', OneHotEncoder(drop='first', handle_unknown='ignore'))
+                                ]), selected_categorical)
+                            ]
+                        )
+                        
+                        # Fit and transform the data
+                        X_preprocessed = preprocessor.fit_transform(df1)
+                        
+                        # Elbow method
+                        col1, col2 = st.columns([1, 1])
+                        
+                        with col1:
+                            st.subheader("Finding Optimal Number of Clusters")
+                            inertia = []
+                            k_range = range(2, min(10, len(df1) // 10 + 1))  # Limit k based on data size
+                            for k in k_range:
+                                kmeans = KMeans(n_clusters=k, random_state=42)
+                                kmeans.fit(X_preprocessed)
+                                inertia.append(kmeans.inertia_)
+                            
+                            # Plot elbow method
+                            fig, ax = plt.subplots(figsize=(8, 5))
+                            ax.plot(k_range, inertia, marker='o')
+                            ax.set_title("Elbow Method for Optimal Clusters")
+                            ax.set_xlabel("Number of clusters")
+                            ax.set_ylabel("Inertia")
+                            ax.grid(True)
+                            st.pyplot(fig)
+                            
+                            st.info("The 'elbow' in the graph indicates the optimal number of clusters. You can adjust the number of clusters using the slider in the sidebar.")
+                        
+                        # Perform clustering with chosen k
+                        kmeans = KMeans(n_clusters, random_state=42)
+                        clusters = kmeans.fit_predict(X_preprocessed)
+                        
+                        # Add cluster labels to original dataframe
+                        df1['Cluster'] = clusters
+                        
+                        # Generate cluster summary
+                        summary_dict = {}
+                        
+                        # Add numeric columns to summary - calculate mean
+                        for col in selected_numeric:
+                            summary_dict[col] = 'mean'
+                        
+                        # Add categorical columns to summary - get most common value
+                        for col in selected_categorical:
+                            summary_dict[col] = lambda x: x.value_counts().index[0] if len(x.value_counts()) > 0 else "N/A"
+                        
+                        # Add count of donors
+                        summary_dict['Cluster'] = 'count'
+                        
+                        # Create the summary dataframe
+                        summary = df1.groupby('Cluster').agg(summary_dict)
+                        
+                        # Rename columns for better display
+                        col_rename = {}
+                        hemoglobin_pattern = re.compile(r'(taux[\s\w]*hemoglobine?)|(hemoglobine?)', re.IGNORECASE)
+                        for col in selected_numeric:
+                            if hemoglobin_pattern.search(col):
+                                col_rename[col] = 'Avg_Haemoglobin'
+                            else:
+                                col_rename[col] = f'Avg_{col}'
 
-            # Ideal Donor Profiling
-            st.subheader("Ideal Donor Profiling & Insights")
+                        for col in selected_categorical:
+                            col_rename[col] = f'Most_Common_{col}'
 
-            # Ensure only numeric columns are considered
-            numeric_cols = st.session_state.df.select_dtypes(include=["number"]).columns
-            cluster_summary = st.session_state.df.groupby("Cluster")[numeric_cols].mean()
+                        col_rename['Cluster'] = 'Donor_Count'
+                        
+                        summary = summary.rename(columns=col_rename).reset_index()
+                        
+                        with col2:
+                            st.subheader("Cluster Distribution")
+                            fig, ax = plt.subplots(figsize=(8, 5))
+                            cluster_counts = df1['Cluster'].value_counts().sort_index()
+                            
+                            # Create a colormap for the clusters
+                            colors = plt.cm.get_cmap('tab10', n_clusters)
+                            cluster_colors = [colors(i) for i in range(n_clusters)]
+                            
+                            ax.bar(cluster_counts.index, cluster_counts.values, color=cluster_colors)
+                            ax.set_title("Number of Donors per Cluster")
+                            ax.set_xlabel("Cluster")
+                            ax.set_ylabel("Number of Donors")
+                            for i, v in enumerate(cluster_counts.values):
+                                ax.text(i, v + 5, str(v), ha='center')
+                            st.pyplot(fig)
+                        
+                        # Display cluster summary
+                        st.subheader("Cluster Profiles")
+                        st.dataframe(summary)
+                        
+                        # Identifying ideal donor cluster
+                        st.markdown("<h2 class='section-header'>Identifying Ideal Donor Profile</h2>", unsafe_allow_html=True)
+                        
+                        # Check if there's a hemoglobin column
+                        hemoglobin_col = None
+                        for col in selected_numeric:
+                            if 'Avg_Haemoglobin' in summary.columns:
+                                ideal_hemoglobin_cluster = summary['Avg_Haemoglobin'].idxmax()
+                                break
+                        
+                        # Find ideal donor cluster based on hemoglobin and other metrics
+                        if hemoglobin_col:
+                            ideal_hemoglobin_cluster = summary[f'Avg_{hemoglobin_col}'].idxmax()
+                            
+                            st.markdown(f"""
+                            <div class='note-box'>
+                                <strong>Ideal Donor Profile (Cluster {ideal_hemoglobin_cluster}):</strong><br>
+                                This cluster has the highest average hemoglobin level ({summary.loc[ideal_hemoglobin_cluster, f'Avg_{hemoglobin_col}']:.2f}) 
+                                among all clusters, suggesting these donors may be optimal for blood donation campaigns.
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Display ideal donor characteristics
+                            st.subheader(f"Characteristics of Ideal Donors (Cluster {ideal_hemoglobin_cluster})")
+                            
+                            ideal_cluster_data = summary.loc[ideal_hemoglobin_cluster].to_dict()
+                            
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.markdown("**Numeric Characteristics:**")
+                                for col in selected_numeric:
+                                    avg_col = f'Avg_{col}'
+                                    st.markdown(f"- Average {col}: {ideal_cluster_data[avg_col]:.2f}")
+                            
+                            with col2:
+                                st.markdown("**Categorical Characteristics:**")
+                                for col in selected_categorical:
+                                    most_common_col = f'Most_Common_{col}'
+                                    value = ideal_cluster_data[most_common_col]
+                                    if isinstance(value, str):
+                                        value = value.title()
+                                    st.markdown(f"- {col}: {value}")
+                        
+                        # Visualize cluster characteristics for numeric features
+                        if len(selected_numeric) > 0:
+                            st.subheader("Cluster Characteristics - Numeric Features")
+                            
+                            # Create a figure for the numeric features comparison
+                            fig, ax = plt.subplots(figsize=(10, 6))
+                            
+                            # Create a grouped bar chart for numeric features
+                            bar_width = 0.8 / len(selected_numeric)
+                            x = np.arange(n_clusters)
+                            
+                            for i, col in enumerate(selected_numeric):
+                                avg_col = f'Avg_{col}'
+                                position = x + (i - len(selected_numeric)/2 + 0.5) * bar_width
+                                ax.bar(position, summary[avg_col], bar_width, label=col, color=plt.cm.tab10(i))
+                            
+                            ax.set_xlabel('Cluster')
+                            ax.set_xticks(x)
+                            ax.set_xticklabels([f'Cluster {i}' for i in range(n_clusters)])
+                            ax.set_title('Average Values by Cluster')
+                            ax.legend()
+                            ax.grid(True, linestyle='--', alpha=0.7)
+                            
+                            st.pyplot(fig)
+                        
+                        # Create a correlation heatmap between numeric features
+                        if len(selected_numeric) > 1:
+                            st.subheader("Correlation Between Numeric Features")
+                            fig, ax = plt.subplots(figsize=(10, 8))
+                            corr = df1[selected_numeric].corr()
+                            sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
+                            st.pyplot(fig)
+                        
+                        # Detailed profile for each cluster
+                        st.subheader("Detailed Donor Profiles by Cluster")
+                        
+                        for i in range(n_clusters):
+                            with st.expander(f"Cluster {i} - {summary.loc[i, 'Donor_Count']} donors"):
+                                cluster_data = df1[df1['Cluster'] == i]
+                                
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    st.markdown(f"**Most Common Characteristics:**")
+                                    
+                                    # Display categorical features
+                                    for col in selected_categorical:
+                                        most_common = summary.loc[i, f'Most_Common_{col}']
+                                        if isinstance(most_common, str):
+                                            most_common = most_common.title()
+                                        st.markdown(f"- {col}: {most_common}")
+                                    
+                                    # Display numeric features
+                                    for col in selected_numeric:
+                                        avg_value = summary.loc[i, f'Avg_{col}']
+                                        st.markdown(f"- Average {col}: {avg_value:.2f}")
+                                    
+                                with col2:
+                                    # Create a simple visualization for this cluster
+                                    if len(selected_numeric) > 0:
+                                        # Pick first numeric column for visualization
+                                        viz_col = selected_numeric[0]
+                                        
+                                        fig, ax = plt.subplots(figsize=(8, 4))
+                                        
+                                        # Distribution within cluster
+                                        sns.histplot(cluster_data[viz_col], kde=True, ax=ax)
+                                        ax.set_title(f"{viz_col} Distribution in Cluster {i}")
+                                        ax.set_xlabel(viz_col)
+                                        ax.set_ylabel("Count")
+                                        
+                                        st.pyplot(fig)
+                        
+                        # Allow downloading the clustered data
+                        csv = df1.to_csv(index=False)
+                        b64 = base64.b64encode(csv.encode()).decode()
+                        href = f'<a href="data:file/csv;base64,{b64}" download="donor_clusters.csv">Download Clustered Data</a>'
+                        st.markdown(href, unsafe_allow_html=True)
+                        
+                        # Campaign recommendations based on clusters
+                        st.markdown("<h2 class='section-header'>Campaign Recommendations</h2>", unsafe_allow_html=True)
+                        
+                        # Generate recommendations based on cluster analysis
+                        for i in range(n_clusters):
+                            with st.expander(f"Targeting Strategy for Cluster {i}"):
+                                st.markdown("**Donor Profile:**")
+                                
+                                # Demographic info
+                                demo_info = []
+                                for col in selected_categorical:
+                                    value = summary.loc[i, f'Most_Common_{col}']
+                                    if isinstance(value, str):
+                                        value = value.title()
+                                    demo_info.append(f"{col}: {value}")
+                                
+                                st.markdown(f"- Demographics: {', '.join(demo_info)}")
+                                
+                                # Age and health info
+                                health_info = []
+                                for col in selected_numeric:
+                                    health_info.append(f"Average {col}: {summary.loc[i, f'Avg_{col}']:.2f}")
+                                
+                                st.markdown(f"- Health Metrics: {', '.join(health_info)}")
+                                
+                                # Targeting recommendations
+                                st.markdown("**Recommended Targeting Strategy:**")
+                                
+                                # Get most common location and profession if available
+                                location_col = next((col for col in selected_categorical if any(loc in col.lower() for loc in ['ville', 'city', 'location'])), None)
+                                profession_col = next((col for col in selected_categorical if any(prof in col.lower() for prof in ['domain', 'profession', 'occupation'])), None)
+                                
+                                if location_col:
+                                    location = summary.loc[i, f'Most_Common_{location_col}']
+                                    if isinstance(location, str):
+                                        location = location.title()
+                                    st.markdown(f"- Focus campaign efforts in {location} area")
+                                
+                                if profession_col:
+                                    profession = summary.loc[i, f'Most_Common_{profession_col}']
+                                    if isinstance(profession, str):
+                                        profession = profession.title()
+                                    st.markdown(f"- Target individuals in the {profession} sector")
+                                
+                                # Specific recommendation based on cluster size
+                                cluster_size = summary.loc[i, 'Donor_Count']
+                                total_donors = df1.shape[0]
+                                percentage = (cluster_size / total_donors) * 100
+                                
+                                if percentage > 30:
+                                    st.markdown(f"- This is a large segment ({percentage:.1f}% of donors). Consider broad marketing campaigns.")
+                                elif percentage > 10:
+                                    st.markdown(f"- This is a medium segment ({percentage:.1f}% of donors). Use targeted marketing campaigns.")
+                                else:
+                                    st.markdown(f"- This is a small segment ({percentage:.1f}% of donors). Focus on personalized outreach.")
+                        
+                else:
+                    st.warning("Please select at least one numeric and one categorical feature to proceed with clustering.")
+            
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+                st.info("Please make sure your CSV file has the required format and try again.")
 
-            # Display eligibility scores for all clusters
-            if eligibility_column in cluster_summary.columns:
-                st.write("### 📊 Eligibility Score for Each Cluster:")
-                eligibility_scores = cluster_summary[eligibility_column]
-
-                # Show scores for each cluster
-                for cluster, score in eligibility_scores.items():
-                    st.write(f"- **Cluster {cluster} Eligibility Score:** {round(score, 3)}")
-
-                # Identify the best cluster
-                ideal_cluster = eligibility_scores.idxmax()
-                st.success(f"✅ **Cluster {ideal_cluster} has the highest eligibility score and represents the ideal donor profile!**")
-
-                # Display detailed profiles for each cluster
-                st.write("### 📌 Detailed Cluster Profiles")
-                for cluster in cluster_summary.index:
-                    st.write(f"#### Cluster {cluster}")
-                    profile = cluster_summary.loc[cluster]
-
-                    # Extract key features dynamically
-                    avg_age = profile.get('Age', np.nan)
-                    hemoglobin = profile.get('Hemoglobin', np.nan)
-                    health_risk = profile.get('Health_Risk_Score', np.nan)
-                    donation_frequency = profile.get('Donation_Frequency', np.nan)
-
-                    if not np.isnan(avg_age):
-                        st.write(f"- **Average Age**: {round(avg_age, 2)}")
-                    if not np.isnan(hemoglobin):
-                        st.write(f"- **Average Hemoglobin Level**: {round(hemoglobin, 2)}")
-                    if not np.isnan(health_risk):
-                        st.write(f"- **Health Risk**: {'Low' if health_risk < 0.5 else 'High'}")
-                    if not np.isnan(donation_frequency):
-                        st.write(f"- **Donation Frequency**: {round(donation_frequency, 2)}")
-
-                    # Highlight the best cluster
-                    if cluster == ideal_cluster:
-                        st.success(f"✅ **Cluster {cluster} is the ideal donor group!**")
-
-                # **Conclusion: Why this cluster is ideal**
-                st.subheader("Final Conclusion")
-
-                # Extract ideal cluster details
-                ideal_profile = cluster_summary.loc[ideal_cluster]
-                conclusion_text = f"""
-                🔎 **Cluster {ideal_cluster} is identified as the best donor group because of the following characteristics:**
-                - **Eligibility Score:** {round(ideal_profile[eligibility_column], 3)}
-                """
-
-                # Dynamically add features if available
-                if not np.isnan(ideal_profile.get('Age', np.nan)):
-                    conclusion_text += f"\n- **Average Age:** {round(ideal_profile['Age'], 2)} years"
-                if not np.isnan(ideal_profile.get('Hemoglobin', np.nan)):
-                    conclusion_text += f"\n- **Average Hemoglobin Level:** {round(ideal_profile['Hemoglobin'], 2)} g/dL"
-                if not np.isnan(ideal_profile.get('Health_Risk_Score', np.nan)):
-                    health_risk_status = "Low" if ideal_profile['Health_Risk_Score'] < 0.5 else "High"
-                    conclusion_text += f"\n- **Health Risk:** {health_risk_status}"
-                if not np.isnan(ideal_profile.get('Donation_Frequency', np.nan)):
-                    conclusion_text += f"\n- **Donation Frequency:** {round(ideal_profile['Donation_Frequency'], 2)} times per year"
-
-                st.success(conclusion_text)
+        else:
+            # Display instructions when no file is uploaded
+            st.info("Please upload a CSV file containing donor data to begin analysis.")
+            
+            st.markdown("""
+            ## Expected Data Format
+            
+            Your CSV file should contain:
+            
+            **Numeric features** such as:
+            - Age
+            - Hemoglobin levels (important for blood donation eligibility)
+            - Number of previous donations
+            
+            **Categorical features** such as:
+            - Gender/Genre
+            - Professional domain/occupation
+            - City/Location
+            
+            ## Important Note
+            
+            <div class='note-box'>
+            Features that don't show eligibility or don't represent donor characteristics should not be included 
+            in the clustering analysis, as they may bias the results and lead to inaccurate donor profiles.
+            </div>
+            
+            ## Dashboard Features
+            
+            Once you upload your data, this dashboard will:
+            1. Allow you to select relevant features for clustering
+            2. Profile and segment donors using clustering techniques
+            3. Identify characteristics of ideal donors (based on hemoglobin levels and other factors)
+            4. Generate visual insights about donor segments
+            5. Provide detailed profiles and targeting strategies for each donor cluster
+            """, unsafe_allow_html=True)
 ############################################################################################################################
 ############################################################################################################################ 
 
@@ -927,30 +1201,6 @@ def show_tab_content(tab_index):
 #########################################################################
 #########################################################################
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #########################################################################
 #########################################################################
 # Display content for each tab and update active tab when tab is selected#
@@ -979,19 +1229,19 @@ try:
         set_active_tab(tab_names[3])
         show_tab_content(3)
     
-    #with tabs[4]:
-    #    set_active_tab(tab_names[4])
-    #    show_tab_content(4) 
-    #with tabs[5]:
-    #    set_active_tab(tab_names[5])
-    #    show_tab_content(5)
+    with tabs[4]:
+        set_active_tab(tab_names[4])
+        show_tab_content(4) 
+    with tabs[5]:
+        set_active_tab(tab_names[5])
+        show_tab_content(5)
 except AttributeError:
     st.warning("Ensure that you have import the dataset before continue please !")
 
 
     
-#with tabs[6]:
-#    set_active_tab(tab_names[6])
-#    show_tab_content(6)
+with tabs[6]:
+    set_active_tab(tab_names[6])
+    show_tab_content(6)
 #################################
 #################################
