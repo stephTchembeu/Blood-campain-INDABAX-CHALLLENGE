@@ -11,11 +11,17 @@ streamlit run dash_app.py
 the dashboard show in your web navigator is a fully interactive dashboard made to be intuitive for the user.</br>
 It is compose of two parts the main part which is showing you information from data and the sidebar used to give you
 more access to what you may want.</br>
+The central part contain the navigatio to naviguate amoung different otions and under the navigation you have the part to see the different informations.
+
 ![interface](images/readme_imgs/dashboard_view.png)
 
-# Map distribution per arrondissement and Quarter
+# Donors distribution
 
-Firstly when the code is being run, we will be taken to the dashboard. This will display and error and this error indicates that first we need to load the dataset. So after loading the dataset
+To ensure you have upload the dataset on which you want to extract information you get a customise message which indicates that first we need to load the dataset.</br>
+
+## Upload the dataset.
+
+To upload the dataset you will need to go in the sidebar and click on the upload button to load your <h2 style="font-size:15px;">.csv</h2> file.
 
 After uploading the dataset(CSV), we will be given the opportunity to select the eligibility column and if this is not chosen it will show error. so after loading the dataset we choose the column "ELIGIBLE AU DON" The filter for this section is given immediately we do select the section "ELIGIBLE AU DON" which are "temporary non eligible, definitely non eligible and eligible. This tells us that choosing the section of definitely eligible won't output because of sparsity of those columns
 
@@ -27,6 +33,8 @@ when temporary non eligible is taken it will display the number of non eligible 
 
 #Ideal Donor Profile
 Here we still choose variable related to eligibility and select features we want to include in our clusters. the cluster with the highest number of eligible donors is considered and later eligibility score computer. The average age of the best donors is outputted which indicates the best donors related to our clusters
+
+# Eligibility
 
 # Campaign effectiveness
 
