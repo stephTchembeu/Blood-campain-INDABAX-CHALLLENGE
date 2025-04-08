@@ -27,7 +27,7 @@ Each of the tab in the nav contains specifique information on each on the propos
 - <b style="font-size:15px;">Donors profiling</b>: here we study the different profile of each donos and build some cluster base on similar information.
 - <b style="font-size:15px;">campaign effectiveness</b>: here we give you insights on the different ongoing facts all over the donation campaign duration.
 - <b style="font-size:15px;">Eligibility prediction</b>: in this last section you can get the prediction of some one from who you have collected data.
-![naviguation](images/readme_imgs/nav.png)
+  ![naviguation](images/readme_imgs/nav.png)
 
 # Donors distribution
 
@@ -36,8 +36,9 @@ Putting the cursor on the map gives the number of donors in each department and 
 
 # Eligibility
 
-Next moving to the which is the eligibility Tab gives information about the number of donors. We have a filter which gives us the opportunity to move between the three unique values of ELIGIBLE AU DON. When we choose the health conditions for definitely non eligible it will display no eligible donors
-when temporary non eligible is taken it will display the number of non eligible per in total number of non eligible
+Moving to the eligibility tab gives information about the number of donors. But firstly you should select the ELIGIBLE AU DON in the side-bar
+You also have a filter which gives us the opportunity to move between the two unique option of multiple selected values the one of ELIGIBLE AU DON.
+and two other for the health condition When you choose the health conditions for temporary or definitely non eligible it will display non eligible donors will display the number of non eligible per in total number of non eligible
 
 # Ideal Donor Profile
 
@@ -53,9 +54,9 @@ This portion reveals to us how often those who have given blood come back for bl
 
 # Model Prediction API
 
-This repository contains code for training a machine learning model, saving the model, and making predictions using a Flask API. The API allows users to send data and receive predictions.
+This part contains the code to run a machine learning model and making predictions using a Flask API. The API allows users to send data and receive predictions on the eligibility condition of the person who data are passed here
 
-## Prerequisites
+## Prerequisites to make prediction
 
 - Python 3.10 or higher
 - pip (Python package installer)
@@ -65,8 +66,8 @@ This repository contains code for training a machine learning model, saving the 
 1. **Clone the repository**:
 
    ```sh
-   git clone https://github.com/nguefackuriel/IndabaX-Cameroon-2025.git
-   cd IndabaX-Cameroon-2025
+   git clone https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE.git
+   cd Blood-campain-INDABAX-CHALLLENGE
    ```
 
 2. **Create a virtual environment** (optional but recommended):
@@ -103,7 +104,7 @@ This repository contains code for training a machine learning model, saving the 
    - Load the data
    - Preprocess the data
    - Train the model
-   - Save the model, preprocessor, and label encoder to a file named [model_pipeline.pkl](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/model_pipeline.pkl)
+   - Save the model, preprocessor, and label encoder to a file named [model_pipeline.pkl](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE.git/model_training/model_pipeline.pkl)
 
 ## Running the Flask API
 
@@ -117,7 +118,7 @@ This repository contains code for training a machine learning model, saving the 
 
 ## Making Predictions on the Web App
 
-1. **Donor Status Prediction**: Go to the "Donor Status Prediction" tab to make prediction on the Web App.
+1. **Donor Status Prediction**: Go to the "Eligibity prediction" tab to make prediction on the Web App.
 
 2. In the Input Data form, enter your data in a JSON format following the format below, you can just copy and paste it, and change the value of features.
 
@@ -338,17 +339,20 @@ This repository contains code for training a machine learning model, saving the 
 
 ## File Structure
 
-- [app.py](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/app.py): Flask application to serve the model and make predictions.
-- [preprocess.py](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/preprocess.py): Contains preprocessing functions to prepare the data for the model.
+- [app.py](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/app.py): Flask application to serve the model and make predictions.
+- [preprocess.py](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/preprocess.py): Contains preprocessing functions to prepare the data for the model.
 - `train.py`: Script to train the model and save the model, preprocessor, and label encoder.
-- [requirements.txt](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/requirements.txt): List of required Python libraries.
-- [professions_mapping.json](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/professions_mapping.json), [arrondissements_mapping.json](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/arrondissements_mapping.json),[quarters_mapping.json](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/quarters_mapping.json), [religion_mapping.json](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/religion_mapping.json), [nationality_mapping.json](https://github.com/nguefackuriel/IndabaX-Cameroon-2025/blob/main/nationality_mapping.json): JSON files containing mappings for standardizing column values.
+- [requirements.txt](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/requirements.txt): List of required Python libraries.
+- [professions_mapping.json](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/professions_mapping.json),
+  [arrondissements_mapping.json](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/arrondissements_mapping.json)
+  ,[quarters_mapping.json](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/quarters_mapping.json)
+  , [religion_mapping.json](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/religion_mapping.json)
+  , [nationality_mapping.json](https://github.com/stephTchembeu/Blood-campain-INDABAX-CHALLLENGE/model_training/nationality_mapping.json):
+  JSON files containing mappings for standardizing column values.
 
 Troubleshooting
 If you encounter any issues, check the console output for error messages and ensure that all dependencies are installed correctly. You can also add print statements in the code to debug and identify any problematic areas.
 
 License
 This project is licensed under the MIT License.
-
-This README file provides a step-by-step guide on how to set up the environment, train the model, run the Flask API, and make predictions using Postman. It also includes an example of the expected JSON data format and troubleshooting tips.
-This README file provides a step-by-step guide on how to set up the environment, train the model, run the Flask API, and make predictions using Postman. It also includes an example of the expected JSON data format and troubleshooting tips.
+This README file provides a step-by-step guide on how to set up the environment, run the dashboard and a Flask API, and make predictions using Postman. It also includes an example of the expected JSON data format and troubleshooting tips.
