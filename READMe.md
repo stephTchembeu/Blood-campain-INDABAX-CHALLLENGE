@@ -27,11 +27,12 @@ Each of the tab in the nav contains specifique information on each on the propos
 - <b style="font-size:15px;">Donors profiling</b>: here we study the different profile of each donos and build some cluster base on similar information.
 - <b style="font-size:15px;">campaign effectiveness</b>: here we give you insights on the different ongoing facts all over the donation campaign duration.
 - <b style="font-size:15px;">Eligibility prediction</b>: in this last section you can get the prediction of some one from who you have collected data.
-  [donors_interface](images/readme_imgs/nav.png)
+  [naviguation](images/readme_imgs/nav.png)
 
 # Donors distribution
 
 Putting the cursor on the map gives the number of donors in each department and increasing or tapping on the map outputs the distribution of selected quarter in the map showing eligibility and non-eligibility.
+[donors_interface](images/readme_imgs/donors.png)
 
 # Eligibility
 
