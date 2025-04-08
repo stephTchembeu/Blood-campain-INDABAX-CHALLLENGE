@@ -521,6 +521,7 @@ Putting the cursor on the map gives the number of donors in each department and 
 Moving to the eligibility tab gives information about the number of donors. But firstly you should select the ELIGIBLE AU DON in the side-bar
 You also have a filter which gives us the opportunity to move between the two unique option of multiple selected values the one of ELIGIBLE AU DON.
 and two other for the health condition When you choose the health conditions for temporary or definitely non eligible it will display non eligible donors will display the number of non eligible per in total number of non eligible
+![donors_interface](images/readme_imgs/eligibility.png)
 
 # Ideal Donor Profile
 
