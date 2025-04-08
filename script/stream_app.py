@@ -1204,9 +1204,6 @@ def show_tab_content(tab_index):
 #########################################################################
 #########################################################################
 # Display content for each tab and update active tab when tab is selected#
-
-   
-
 try:
     #print("")
     with tabs[0]:
@@ -1238,8 +1235,6 @@ try:
 except AttributeError:
     st.warning("Ensure that you have import the dataset before continue please !")
 
-
-    
 with tabs[6]:
     set_active_tab(tab_names[6])
     show_tab_content(6)
