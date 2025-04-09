@@ -51,7 +51,7 @@ st.session_state.healt_condition = ""
 st.sidebar.markdown("<hr style='border:1px solid #ccc'>", unsafe_allow_html=True) # straight line for the end of the section
 
 # Main content area with tabs
-tab_names = ["Donnors distribution", "Eligibility", "Donors profiling", "Campaign effectiveness", 
+tab_names = ["Donors distribution", "Eligibility", "Donors profiling", "Campaign effectiveness", 
              "Donors retention", "Eligibity prediction"]
 
 # Create tabs
@@ -331,36 +331,6 @@ def show_tab_content(tab_index):
 ###################################################################################################################
     elif tab_index == 2:
         st.markdown("<h1 style='font-size: 45px;color:rgb(128,4,0)'>Donor profiling</h1>", unsafe_allow_html=True)
-
-        # Custom CSS for better styling
-        st.markdown("""
-        <style>
-            .main-header {
-                font-size: 2rem;
-                color: rgb(128,4,0);
-                text-align: center;
-            }
-            .section-header {
-                font-size: 1rem;
-                color: rgb(128,4,0);
-                padding-top: 1rem;
-            }
-            .stat-box {
-                background-color: #f5f5f5;
-                padding: 20px;
-                border-radius: 5px;
-                box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-            }
-            .note-box {
-                background-color: #FFF3CD;
-                border-left: 5px solid #FFC107;
-                padding: 10px 15px;
-                margin: 10px 0;
-                border-radius: 0 5px 5px 0;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-
        
         # Sidebar section
         with st.sidebar:
